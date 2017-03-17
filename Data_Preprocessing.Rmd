@@ -1,0 +1,134 @@
+---
+title: "LAESI imaging data preprocessing"
+author: "Purva Kulkarni"
+date: "3/17/2017"
+output: html_document
+---
+
+## Introduction
+
+This is an R Markdown document. The document step by step illustrates the preprocessing steps performed on the LAESI imaigng data performed on plant root pairs:
+
+Details regarding the plant species used can be found here: [linked phrase](http://example.com)
+
+The script uses `MALDIQuant` and `MALDIQuantForeign` packages to perform preprocessing on the data. As an input the the script uses ```mzXML``` format files to read the mass spectral data and an additional ```species_info.csv``` file is created that contains information on the samples used.
+
+Load the required packages
+```{r}
+library(MALDIquant)
+library(MALDIquantForeign)
+```
+
+Set the working directory and import the data files
+```{r}
+setwd('/mnt/data/home/NIOO/purvak/R/Sample_Data_Folder_for_xcms/')
+CJ1 <- importMzMl('./CJ1.mzML')
+CJ2 <- importMzMl('./CJ2.mzML')
+CJ3 <- importMzMl('./CJ3.mzML')
+CS1 <- importMzMl('./CS1.mzML')
+CS2 <- importMzMl('./CS2.mzML')
+CS4 <- importMzMl('./CS4.mzML')
+GM1 <- importMzMl('./GM_1.mzML')
+GM2 <- importMzMl('./GM_2.mzML')
+GM3 <- importMzMl('./GM_3.mzML')
+GP1 <- importMzMl('./GP_1.mzML')
+GP2 <- importMzMl('./GP_2.mzML')
+GP3 <- importMzMl('./GP_3.mzML')
+```
+Generate average spectra for all the mass spectral data objects
+```{r}
+avgCJ1 <- averageMassSpectra(CJ1)
+avgCJ2 <- averageMassSpectra(CJ2)
+avgCJ3 <- averageMassSpectra(CJ3)
+avgCS1 <- averageMassSpectra(CS1)
+avgCS2 <- averageMassSpectra(CS2)
+avgCS4 <- averageMassSpectra(CS4)
+avgGM1 <- averageMassSpectra(GM1)
+avgGM2 <- averageMassSpectra(GM2)
+avgGM3 <- averageMassSpectra(GM3)
+avgGP1 <- averageMassSpectra(GP1)
+avgGP2 <- averageMassSpectra(GP2)
+avgGP3 <- averageMassSpectra(GP3)
+```
+
+Combine all the average spectra in the form of a list
+```{r}
+LAESIspectra <- c(avgCJ1, avgCJ2, avgCJ3, avgCS1, avgCS2, avgCS4, avgGM1, avgGM2, avgGM3, avgGP1, avgGP2, avgGP3)
+```
+
+Read the ```spectra_info.csv``` file to get information on the root species used
+```
+LAESIspectra.info <- read.table("spectra_info.csv", sep = ",", header = TRUE)
+LAESIspectra.info
+```
+Plot the raw average mass spectra to get a overview of distinct mass features 
+```{r}
+par(mfrow = c(3,4))
+plot(LAESIspectra[[1]], main = "CJ1", col = "blue")
+plot(LAESIspectra[[4]], main = "CS1", col = "blue")
+plot(LAESIspectra[[7]], main = "GM1", col = "blue")
+plot(LAESIspectra[[10]], main = "GP1", col = "blue")
+plot(LAESIspectra[[2]], main = "CJ2", col = "blue")
+plot(LAESIspectra[[5]], main = "CS2", col = "blue")
+plot(LAESIspectra[[8]], main = "GM2", col = "blue")
+plot(LAESIspectra[[11]], main = "GP2", col = "blue")
+plot(LAESIspectra[[3]], main = "CJ3", col = "blue")
+plot(LAESIspectra[[6]], main = "CS4", col = "blue")
+plot(LAESIspectra[[9]], main = "GM3", col = "blue")
+plot(LAESIspectra[[12]], main = "GP3", col = "blue")
+dev.off()
+```
+
+Perform smoothing on the average mass spectra using 41 point Savitzky-Golay-Filter. Square root transformation is not applied since it adversely affected the spectra.
+
+```{r}
+LAESIspectraSmoothed <- smoothIntensity(LAESIspectra, method="SavitzkyGolay", halfWindowSize=10)
+```
+Estimate and perform baseline correction usign the SNIP algorithm
+```{r}
+baseline <- estimateBaseline(LAESIspectraSmoothed[[1]], method="SNIP",iterations=150)
+plot(LAESIspectraSmoothed[[1]])
+lines(baseline, col="red", lwd=2)
+LAESIspectraSmoothedBaselineCorrected <- removeBaseline(LAESIspectraSmoothed, method="SNIP",iterations=150)
+```
+
+Perform TIC normalization to equalize the intensities across spectra and then align spectra using a peak based warping algorithm.
+```{r}
+LAESIspectraSmoothedBaselineCorrectedNormalized <- calibrateIntensity(LAESIspectraSmoothedBaselineCorrected, method="TIC")
+LAESIspectraSmoothedBaselineCorrectedNormalizedAligned <- alignSpectra(LAESIspectraSmoothedBaselineCorrectedNormalized)
+```
+
+Average all the technical replicates before performing peak picking
+```{r}
+avgSpectraReplicates <- averageMassSpectra(LAESIspectraSmoothedBaselineCorrectedNormalizedAligned, labels=LAESIspectra.info$species)
+avgSpectraReplicates.info <-
+LAESIspectra.info[!duplicated(LAESIspectra.info$species), ]
+plot(avgSpectraReplicates[[1]])
+```
+Estimate noise and perform peak detection based on the S/N ratio
+```{r}
+lines(noise, col="red")
+lines(noise[, 1], 5*noise[, 2], col="blue")
+LAESIPeaks <- detectPeaks(avgSpectraReplicates, SNR=5, halfWindowSize=10)
+plot(avgSpectraReplicates[[1]], xlim = c(400, 450))
+points(LAESIPeaks[[1]], col="red", pch=4)
+```
+
+Perform peak binning to make similar peak mass values identical
+```{r}
+LAESIPeaksBinned <- binPeaks(LAESIPeaks)
+LAESIPeaksBinnedFiltered <- filterPeaks(LAESIPeaksBinned, minFrequency=c(0.5, 0.5),labels=avgSpectraReplicates.info$type, mergeWhitelists=TRUE)
+```
+
+Create the feature matrix and label the rows with the corresponding plant root species as provided in the the species_info.csv table
+```{r}
+LAESIfeatureMatrix <- intensityMatrix(LAESIPeaksBinnedFiltered, avgSpectraReplicates)
+rownames(LAESIfeatureMatrix) <- avgSpectraReplicates.info$species
+```
+
+Perform hierarchical clustering based on euclidean distance to visualize the results
+```{r}
+LAESIdistanceMatrix <- dist(LAESIfeatureMatrix, method="euclidean")
+LAESIhClust <- hclust(LAESIdistanceMatrix, method="complete")
+plot(LAESIhClust, hang = -1)
+```
