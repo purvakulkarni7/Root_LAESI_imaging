@@ -17,43 +17,72 @@ Load the required packages
 ```{r}
 library(MALDIquant)
 library(MALDIquantForeign)
+library(gplots)
+library(RColorBrewer)
 ```
 
 Set the working directory and import the data files
 ```{r}
 setwd('/mnt/data/home/NIOO/purvak/R/Sample_Data_Folder_for_xcms/')
+
+# Centaurea jacea (CJ)
 CJ1 <- importMzMl('./CJ1.mzML')
 CJ2 <- importMzMl('./CJ2.mzML')
 CJ3 <- importMzMl('./CJ3.mzML')
+
+# Centaurea stoebe [RE] (CS)
 CS1 <- importMzMl('./CS1.mzML')
 CS2 <- importMzMl('./CS2.mzML')
 CS4 <- importMzMl('./CS4.mzML')
+
+# Geranium molle (GM)
 GM1 <- importMzMl('./GM_1.mzML')
 GM2 <- importMzMl('./GM_2.mzML')
 GM3 <- importMzMl('./GM_3.mzML')
+
+# Geranium pyrenaicum [RE] (GP)
 GP1 <- importMzMl('./GP_1.mzML')
 GP2 <- importMzMl('./GP_2.mzML')
 GP3 <- importMzMl('./GP_3.mzML')
+
+# Rorippa sylvestris (RS)
+RS1 <- importMzMl('./RS_1.mzML')
+RS2 <- importMzMl('./RS_2.mzML')
+RS3 <- importMzMl('./RS_3.mzML')
+
+# Rorippa austriaca [RE] (RA)
+RA1 <- importMzMl('./RA_1.mzML')
+RA2 <- importMzMl('./RA_2.mzML')
 ```
 Generate average spectra for all the mass spectral data objects
 ```{r}
 avgCJ1 <- averageMassSpectra(CJ1)
 avgCJ2 <- averageMassSpectra(CJ2)
 avgCJ3 <- averageMassSpectra(CJ3)
+
 avgCS1 <- averageMassSpectra(CS1)
 avgCS2 <- averageMassSpectra(CS2)
 avgCS4 <- averageMassSpectra(CS4)
+
 avgGM1 <- averageMassSpectra(GM1)
 avgGM2 <- averageMassSpectra(GM2)
 avgGM3 <- averageMassSpectra(GM3)
+
 avgGP1 <- averageMassSpectra(GP1)
 avgGP2 <- averageMassSpectra(GP2)
 avgGP3 <- averageMassSpectra(GP3)
+
+avgRS1 <- averageMassSpectra(RS1)
+avgRS2 <- averageMassSpectra(RS2)
+avgRS3 <- averageMassSpectra(RS3)
+
+avgRA1 <- averageMassSpectra(RA1)
+avgRA2 <- averageMassSpectra(RA2)
 ```
 
 Combine all the average spectra in the form of a list
 ```{r}
-LAESIspectra <- c(avgCJ1, avgCJ2, avgCJ3, avgCS1, avgCS2, avgCS4, avgGM1, avgGM2, avgGM3, avgGP1, avgGP2, avgGP3)
+LAESIspectra <- c(avgCJ1, avgCJ2, avgCJ3, avgCS1, avgCS2, avgCS4, avgGM1, avgGM2, avgGM3, avgGP1, avgGP2, avgGP3, avgRS1, avgRS2, avgRS3, avgRA1, avgRA2)
 ```
 
 Read the ```spectra_info.csv``` file to get information on the root species used
@@ -63,19 +92,26 @@ LAESIspectra.info
 ```
 Plot the raw average mass spectra to get a overview of distinct mass features 
 ```{r}
-par(mfrow = c(3,4))
-plot(LAESIspectra[[1]], main = "CJ1", col = "blue")
-plot(LAESIspectra[[4]], main = "CS1", col = "blue")
-plot(LAESIspectra[[7]], main = "GM1", col = "blue")
-plot(LAESIspectra[[10]], main = "GP1", col = "blue")
-plot(LAESIspectra[[2]], main = "CJ2", col = "blue")
-plot(LAESIspectra[[5]], main = "CS2", col = "blue")
-plot(LAESIspectra[[8]], main = "GM2", col = "blue")
-plot(LAESIspectra[[11]], main = "GP2", col = "blue")
-plot(LAESIspectra[[3]], main = "CJ3", col = "blue")
-plot(LAESIspectra[[6]], main = "CS4", col = "blue")
-plot(LAESIspectra[[9]], main = "GM3", col = "blue")
-plot(LAESIspectra[[12]], main = "GP3", col = "blue")
+par(mfrow = c(3,6))
+plot(LAESIspectra[[1]], main = "CJ1", col = "dodgerblue4")
+plot(LAESIspectra[[4]], main = "CS1", col = "dodgerblue")
+plot(LAESIspectra[[7]], main = "GM1", col = "brown4")
+plot(LAESIspectra[[10]], main = "GP1", col = "brown1")
+plot(LAESIspectra[[13]], main = "RS1", col = "darkgreen")
+plot(LAESIspectra[[16]], main = "RA1", col = "chartreuse3")
+
+plot(LAESIspectra[[2]], main = "CJ2", col = "dodgerblue4")
+plot(LAESIspectra[[5]], main = "CS2", col = "dodgerblue")
+plot(LAESIspectra[[8]], main = "GM2", col = "brown4")
+plot(LAESIspectra[[11]], main = "GP2", col = "brown1")
+plot(LAESIspectra[[14]], main = "RS2", col = "darkgreen")
+plot(LAESIspectra[[17]], main = "RA2", col = "chartreuse3")
+
+plot(LAESIspectra[[3]], main = "CJ3", col = "dodgerblue4")
+plot(LAESIspectra[[6]], main = "CS4", col = "dodgerblue")
+plot(LAESIspectra[[9]], main = "GM3", col = "brown4")
+plot(LAESIspectra[[12]], main = "GP3", col = "brown1")
+plot(LAESIspectra[[15]], main = "RS3", col = "darkgreen")
 dev.off()
 ```
 
@@ -87,6 +123,9 @@ LAESIspectraSmoothed <- smoothIntensity(LAESIspectra, method="SavitzkyGolay", ha
 Estimate and perform baseline correction usign the SNIP algorithm
 ```{r}
 baseline <- estimateBaseline(LAESIspectraSmoothed[[1]], method="SNIP",iterations=150)
+```
+
+```{r}
 plot(LAESIspectraSmoothed[[1]])
 lines(baseline, col="red", lwd=2)
 LAESIspectraSmoothedBaselineCorrected <- removeBaseline(LAESIspectraSmoothed, method="SNIP",iterations=150)
@@ -124,6 +163,8 @@ Create the feature matrix and label the rows with the corresponding plant root s
 ```{r}
 LAESIfeatureMatrix <- intensityMatrix(LAESIPeaksBinnedFiltered, avgSpectraReplicates)
 rownames(LAESIfeatureMatrix) <- avgSpectraReplicates.info$species
+# Masses for the feature matrix can be visualized using the mass attribute
+attributes(LAESIfeatureMatrix)$mass
 ```
 
 Perform hierarchical clustering based on euclidean distance to visualize the results
@@ -131,4 +172,53 @@ Perform hierarchical clustering based on euclidean distance to visualize the res
 LAESIdistanceMatrix <- dist(LAESIfeatureMatrix, method="euclidean")
 LAESIhClust <- hclust(LAESIdistanceMatrix, method="complete")
 plot(LAESIhClust, hang = -1)
+```
+
+Visualization of distance matrix
+```{r}
+m = as.matrix(LAESIdistanceMatrix)
+heatmap.2(m,
+          cellnote = round(m, 3),  # same data set for cell labels
+          main = "Distance matrix heatmap", # heat map title
+          notecol="black",      # change font color of cell labels to black
+          density.info="none",  # turns off density plot inside color legend
+          trace="none",         # turns off trace lines inside the heat map
+          margins =c(12,9),     # widens margins around plot
+          col=topo.colors(100),       # use on color palette defined earlier
+          dendrogram="row",     # only draw a row dendrogram
+          Colv="NA")            # turn off column clustering
+```
+
+Convert to individual peaklists, 1 for every species
+```{r}
+CJPeaklist <- data.frame(mass(LAESIPeaksBinnedFiltered[[1]]),intensity(LAESIPeaksBinnedFiltered[[1]]))
+names(CJPeaklist) <- NULL
+CJPeaklist <- as.matrix(CJPeaklist)
+write.xlsx2(CJPeaklist, "CJPeaklist.xlsx", row.names = FALSE, col.names = FALSE)
+
+CSPeaklist <- data.frame(mass(LAESIPeaksBinnedFiltered[[2]]),intensity(LAESIPeaksBinnedFiltered[[2]]))
+names(CSPeaklist) <- NULL
+CSPeaklist <- as.matrix(CSPeaklist)
+write.xlsx2(CSPeaklist, "CSPeaklist.xlsx", row.names = FALSE, col.names = FALSE)
+
+GMPeaklist <- data.frame(mass(LAESIPeaksBinnedFiltered[[3]]),intensity(LAESIPeaksBinnedFiltered[[3]]))
+names(GMPeaklist) <- NULL
+GMPeaklist <- as.matrix(GMPeaklist)
+write.xlsx2(GMPeaklist, "GMPeaklist.xlsx", row.names = FALSE, col.names = FALSE)
+
+GPPeaklist <- data.frame(mass(LAESIPeaksBinnedFiltered[[4]]),intensity(LAESIPeaksBinnedFiltered[[4]]))
+names(GPPeaklist) <- NULL
+GPPeaklist <- as.matrix(GPPeaklist)
+write.xlsx2(GPPeaklist, "GPPeaklist.xlsx", row.names = FALSE, col.names = FALSE)
+
+RAPeaklist <- data.frame(mass(LAESIPeaksBinnedFiltered[[5]]),intensity(LAESIPeaksBinnedFiltered[[5]]))
+names(RAPeaklist) <- NULL
+RAPeaklist <- as.matrix(RAPeaklist)
+write.xlsx2(RAPeaklist, "RAPeaklist.xlsx", row.names = FALSE, col.names = FALSE)
+
+RSPeaklist <- data.frame(mass(LAESIPeaksBinnedFiltered[[6]]),intensity(LAESIPeaksBinnedFiltered[[6]]))
+names(RSPeaklist) <- NULL
+RSPeaklist <- as.matrix(RSPeaklist)
+write.xlsx2(RSPeaklist, "RSPeaklist.xlsx", row.names = FALSE, col.names = FALSE)
+
 ```
